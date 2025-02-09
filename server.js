@@ -1,56 +1,34 @@
-const { default: makeWASocket, useMultiFileAuthState } = require("@whiskeysockets/baileys");
-const qrcode = require("qrcode-terminal");
-const express = require("express");
+const makeWASocket = require("@whiskeysockets/baileys").default;
+const { useSingleFileAuthState } = require("@whiskeysockets/baileys");
+const { Boom } = require("@hapi/boom");
+const fs = require("fs");
+const pino = require("pino");
 
-const app = express();
-const PORT = process.env.PORT || 3000;
-
-// Keep Glitch awake
-app.get("/", (req, res) => {
-    res.send("Bot is running! 🚀");
-});
-
-async function startBot() {
-    const { state, saveCreds } = await useMultiFileAuthState("auth_info");
-    const sock = makeWASocket({ auth: state });
-
-    sock.ev.on("creds.update", saveCreds);
-
-    sock.ev.on("connection.update", ({ connection, qr }) => {
-        if (qr) {
-            console.log("🔄 Scan this QR code with WhatsApp:");
-            qrcode.generate(qr, { small: true }); // Displays the QR code properly in terminal
-        } else if (connection === "open") {
-            console.log("✅ Bot is now connected to WhatsApp!");
-            console.log("CREATORS: GOD, levi, and blvck");
-        }
-    });
-
-    sock.ev.on("messages.upsert", async (m) => {
-        const msg = m.messages[0];
-        if (!msg.message || msg.key.fromMe) return;
-
-        const chatId = msg.key.remoteJid;
-        const text = msg.message.conversation?.toLowerCase() || "";
-
-        let reply = "";
-
-        if (text.includes("start")) {
-            reply = "🔥 Welcome to the Manipulator's Game 🔥\n\nReply with 'Truth' or 'Lie'.";
-        } else if (text === "truth" || text === "lie") {
-            reply = `You chose: ${text.toUpperCase()} ✅\n\nNow, type "Guess" to see if I catch you!`;
-        } else if (text.includes("guess")) {
-            reply = Math.random() < 0.5 ? "I caught you! 😈" : "You tricked me! 🎉";
-        } else {
-            reply = "Send 'Start' to begin the game!";
-        }
-
-        await sock.sendMessage(chatId, { text: reply });
-    });
+// Ensure auth folder exists
+if (!fs.existsSync("./auth_info")) {
+    fs.mkdirSync("./auth_info", { recursive: true });
 }
 
-app.listen(PORT, () => {
-    console.log(`🌐 Server running on port ${PORT}`);
-});
+const { state, saveState } = useSingleFileAuthState("./auth_info/creds.json");
+
+const startBot = () => {
+    const sock = makeWASocket({
+        auth: state,
+        printQRInTerminal: true,
+        logger: pino({ level: "silent" })
+    });
+
+    sock.ev.on("creds.update", saveState);
+    sock.ev.on("connection.update", (update) => {
+        const { connection, lastDisconnect } = update;
+        if (connection === "close") {
+            const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== 401;
+            console.log("Connection closed, reconnecting...", shouldReconnect);
+            if (shouldReconnect) startBot();
+        } else if (connection === "open") {
+            console.log("✅ Successfully connected to WhatsApp!");
+        }
+    });
+};
 
 startBot();
