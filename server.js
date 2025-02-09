@@ -1,4 +1,5 @@
 const { default: makeWASocket, useMultiFileAuthState } = require("@whiskeysockets/baileys");
+const qrcode = require("qrcode-terminal");
 const express = require("express");
 
 const app = express();
@@ -17,8 +18,8 @@ async function startBot() {
 
     sock.ev.on("connection.update", ({ connection, qr }) => {
         if (qr) {
-            console.log("Scan this QR code with WhatsApp:");
-            console.log(qr);
+            console.log("🔄 Scan this QR code with WhatsApp:");
+            qrcode.generate(qr, { small: true }); // Displays the QR code properly in terminal
         } else if (connection === "open") {
             console.log("✅ Bot is now connected to WhatsApp!");
             console.log("CREATORS: GOD, levi, and blvck");
