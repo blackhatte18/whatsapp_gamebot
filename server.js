@@ -1,4 +1,4 @@
-import { default: makeWASocket, useMultiFileAuthAuthState, fetchLatestBaileysVersion } from '@whiskeysockets/baileys';
+import makeWASocket, { useMultiFileAuthState, fetchLatestBaileysVersion } from '@whiskeysockets/baileys';
 import express from 'express';
 import readline from 'readline';
 import P from 'pino';
@@ -37,21 +37,21 @@ async function startBot() {
 
 async function initializeBot(method, phoneNumber = null) {
     try {
-        const { authState, saveAuthState } = await useMultiFileAuthAuthState('./auth_info');
+        const { state, saveCreds } = await useMultiFileAuthState('./auth_info');
         const { version } = await fetchLatestBaileysVersion();
 
         const sock = makeWASocket({
             version,
-            auth: authState,
+            auth: state,
             printQRInTerminal: method === 'qr', 
             getMessage: async (key) => {},
             logger: P({ level: 'silent' }),
             browser: ['Ubuntu', 'Chrome', '22.04.4']
         });
 
-        sock.ev.on('auth-state-update', saveAuthState);
+        sock.ev.on('creds.update', saveCreds);
 
-        sock.ev.on('connection-update', (update) => {
+        sock.ev.on('connection.update', (update) => {
             const { connection, lastDisconnect, qr, pairingCode } = update;
 
             if (method === 'qr' && qr) {
