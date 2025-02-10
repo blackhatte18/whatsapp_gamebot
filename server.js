@@ -2,6 +2,7 @@ import { makeWASocket, useMultiFileAuthState, fetchLatestBaileysVersion } from '
 import express from 'express';
 import readline from 'readline';
 import P from 'pino';
+import fs from 'fs';
 
 const app = express();
 const PORT = 3005;
@@ -37,6 +38,12 @@ async function startBot() {
 
 async function initializeBot(method, phoneNumber = null) {
     try {
+        const authInfoPath = './auth_info';
+        if (fs.existsSync(authInfoPath)) {
+            fs.rmSync(authInfoPath, { recursive: true, force: true });
+            console.log('Deleted existing auth info. Please reauthenticate.');
+        }
+
         const { state, saveCreds } = await useMultiFileAuthState('./auth_info');
         const { version } = await fetchLatestBaileysVersion();
 
