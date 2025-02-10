@@ -1,10 +1,10 @@
-import makeWASocket, { useMultiFileAuthState, fetchLatestBaileysVersion } from '@whiskeysockets/baileys';
+import { default: makeWASocket, useMultiFileAuthAuthState, fetchLatestBaileysVersion } from '@whiskeysockets/baileys';
 import express from 'express';
 import readline from 'readline';
 import P from 'pino';
 
 const app = express();
-const PORT = 3000;
+const PORT = 3005;
 
 const rl = readline.createInterface({
     input: process.stdin,
@@ -37,21 +37,21 @@ async function startBot() {
 
 async function initializeBot(method, phoneNumber = null) {
     try {
-        const { state, saveCreds } = await useMultiFileAuthState('./auth_info');
+        const { authState, saveAuthState } = await useMultiFileAuthAuthState('./auth_info');
         const { version } = await fetchLatestBaileysVersion();
 
         const sock = makeWASocket({
             version,
-            auth: state,
-            printQRInTerminal: method === 'qr', // Show QR Code if selected
+            auth: authState,
+            printQRInTerminal: method === 'qr', 
             getMessage: async (key) => {},
             logger: P({ level: 'silent' }),
             browser: ['Ubuntu', 'Chrome', '22.04.4']
         });
 
-        sock.ev.on('creds.update', saveCreds);
+        sock.ev.on('auth-state-update', saveAuthState);
 
-        sock.ev.on('connection.update', (update) => {
+        sock.ev.on('connection-update', (update) => {
             const { connection, lastDisconnect, qr, pairingCode } = update;
 
             if (method === 'qr' && qr) {
@@ -68,7 +68,7 @@ async function initializeBot(method, phoneNumber = null) {
                     console.log('Logged out. Restart server to reauthenticate.');
                 }
             } else if (connection === 'open') {
-                console.log('Connected to WhatsApp!');
+                console.log('Connected to WhatsApp! 📱');
             }
         });
     } catch (error) {
