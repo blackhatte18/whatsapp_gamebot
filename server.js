@@ -1,4 +1,4 @@
-import makeWASocket, { useMultiFileAuthState, fetchLatestBaileysVersion } from '@whiskeysockets/baileys';
+import { makeWASocket, useMultiFileAuthState, fetchLatestBaileysVersion } from '@whiskeysockets/baileys';
 import express from 'express';
 import readline from 'readline';
 import P from 'pino';
@@ -76,8 +76,8 @@ async function initializeBot(method, phoneNumber = null) {
     }
 }
 
-startBot();
-
 app.listen(PORT, () => {
     console.log(`🌐 Server running on port ${PORT}`);
 });
+
+startBot();
