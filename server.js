@@ -68,7 +68,10 @@ async function initializeBot(method, phoneNumber = null) {
 
             if (connection === 'close') {
                 if (lastDisconnect?.error?.output?.statusCode !== 401) {
-                    console.log('Connection closed. Please restart the server.');
+                    console.log('Connection closed. Restarting server...');
+                    setTimeout(() => {
+                        process.exit(1);
+                    }, 5000);
                 } else {
                     console.log('Logged out. Restart server to reauthenticate.');
                 }
