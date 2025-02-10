@@ -1,47 +1,76 @@
-const { Boom } = require('@hapi/boom');
-const { useSingleFileAuthState, makeWASocket } = require('@whiskeysockets/baileys');
-const pino = require('pino');
-const fs = require('fs');
-const express = require('express');
-
-const { state, saveState } = useSingleFileAuthState("./auth_info/creds.json");
-const sock = makeWASocket({
-    logger: pino({ level: 'silent' }),
-    printQRInTerminal: true,
-    auth: state
-});
-
-sock.ev.on('creds.update', saveState);
-
-sock.ev.on('connection.update', ({ connection, lastDisconnect }) => {
-    if (connection === 'close') {
-        const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
-        console.log('Connection closed. Reconnecting...', shouldReconnect);
-        if (shouldReconnect) {
-            startBot();
-        }
-    } else if (connection === 'open') {
-        console.log('✅ Connected to WhatsApp');
-    }
-});
-
-sock.ev.on('messages.upsert', async (m) => {
-    const msg = m.messages[0];
-    if (!msg.message || msg.key.fromMe) return;
-    const sender = msg.key.remoteJid;
-    const text = msg.message.conversation || msg.message.extendedTextMessage?.text;
-    
-    if (text?.toLowerCase() === 'ping') {
-        await sock.sendMessage(sender, { text: 'Pong! 🏓' });
-    }
-});
+import makeWASocket, { useMultiFileAuthState, fetchLatestBaileysVersion } from '@whiskeysockets/baileys';
+import express from 'express';
+import readline from 'readline';
+import { Boom } from '@hapi/boom';
+import P from 'pino';
 
 const app = express();
-app.get('/', (req, res) => res.send('WhatsApp Bot is running!'));
-app.listen(3000, () => console.log('🌐 Server running on port 3000'));
+const PORT = 3000;
 
-function startBot() {
-    require('child_process').spawn('node', ['server.js'], {
-        stdio: 'inherit'
+const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+});
+
+async function startBot() {
+    rl.question('Do you want to use QR code or pairing code? (qr/pairing): ', async (method) => {
+        if (method !== 'qr' && method !== 'pairing') {
+            console.log('Invalid option. Please restart and choose "qr" or "pairing".');
+            rl.close();
+            return;
+        }
+        
+        if (method === 'pairing') {
+            rl.question('Enter your phone number (with country code, e.g., 234XXXXXXXXXX): ', async (phoneNumber) => {
+                await initializeBot(method, phoneNumber);
+                rl.close();
+            });
+        } else {
+            await initializeBot(method);
+            rl.close();
+        }
     });
 }
+
+async function initializeBot(method, phoneNumber = null) {
+    const { state, saveCreds } = await useMultiFileAuthState('./auth_info');
+    const { version } = await fetchLatestBaileysVersion();
+
+    const sock = makeWASocket({
+        version,
+        auth: state,
+        printQRInTerminal: method === 'qr', // Show QR Code if selected
+        getMessage: async (key) => {},
+        logger: P({ level: 'silent' }),
+        browser: ['Ubuntu', 'Chrome', '22.04.4']
+    });
+
+    sock.ev.on('creds.update', saveCreds);
+
+    sock.ev.on('connection.update', (update) => {
+        const { connection, lastDisconnect, qr, pairingCode } = update;
+
+        if (method === 'qr' && qr) {
+            console.log('Scan this QR Code:', qr);
+        }
+        if (method === 'pairing' && pairingCode) {
+            console.log(`Pairing Code for ${phoneNumber}:`, pairingCode);
+        }
+
+        if (connection === 'close') {
+            if (lastDisconnect?.error?.output?.statusCode !== 401) {
+                startBot();
+            } else {
+                console.log('Logged out. Restart server to reauthenticate.');
+            }
+        } else if (connection === 'open') {
+            console.log('Connected to WhatsApp!');
+        }
+    });
+}
+
+startBot();
+
+app.listen(PORT, () => {
+    console.log(`🌐 Server running on port ${PORT}`);
+});
