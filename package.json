@@ -1,30 +1,19 @@
 {
-  "name": "glitch-hello-node",
-  "version": "0.1.0",
-  "description": "A simple Node app built on fastify, instantly up and running. Built to be remixed on Glitch.com.",
+  "name": "whatsapp-gamebot",
+  "version": "1.0.0",
+  "description": "A WhatsApp bot for games using Baileys",
   "main": "server.js",
+  "type": "module",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
-    "@fastify/formbody": "^7.4.0",
-    "@fastify/static": "^6.10.2",
-    "@fastify/view": "^8.0.0",
-    "@whiskeysockets/baileys": "^6.6.0",
+    "@whiskeysockets/baileys": "^6.4.0",
+    "@hapi/boom": "^9.1.4",
     "express": "^4.18.2",
-    "fastify": "^4.21.0",
-    "handlebars": "^4.7.8",
-    "qrcode-terminal": "^0.12.0"
+    "pino": "^8.16.0"
   },
   "engines": {
-    "node": "18.x"
-  },
-  "repository": {
-    "url": "https://glitch.com/edit/#!/glitch-hello-node"
-  },
-  "license": "MIT",
-  "keywords": [
-    "node",
-    "glitch"
-  ]
+    "node": ">=18.0.0"
+  }
 }
