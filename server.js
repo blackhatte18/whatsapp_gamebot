@@ -24,11 +24,9 @@ async function startBot() {
             if (method === 'pairing') {
                 rl.question('Enter your phone number (with country code, e.g., 234XXXXXXXXXX): ', async (phoneNumber) => {
                     await initializeBot(method, phoneNumber);
-                    rl.close();
                 });
             } else {
                 await initializeBot(method);
-                rl.close();
             }
         });
     } catch (error) {
@@ -70,7 +68,7 @@ async function initializeBot(method, phoneNumber = null) {
 
             if (connection === 'close') {
                 if (lastDisconnect?.error?.output?.statusCode !== 401) {
-                    startBot();
+                    console.log('Connection closed. Please restart the server.');
                 } else {
                     console.log('Logged out. Restart server to reauthenticate.');
                 }
